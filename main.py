@@ -4,7 +4,6 @@ import os
 from mcp.server.fastmcp import FastMCP
 from mcp.server.auth.settings import AuthSettings
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.proxies import GenericProxyConfig
 from pydantic import AnyHttpUrl
 from dotenv import load_dotenv
 
@@ -84,29 +83,10 @@ def fetch_video_transcript(url: str) -> str:
         return "\n".join(formatted_entries)
 
     try:
-        # Get proxy credentials from environment
-        proxy_username = os.getenv("PROXY_USERNAME")
-        proxy_password = os.getenv("PROXY_PASSWORD")
-        proxy_url_base = os.getenv("PROXY_URL")
-
-        if not proxy_username or not proxy_password or not proxy_url_base:
-            raise ValueError("Proxy credentials not configured. Set PROXY_USERNAME, PROXY_PASSWORD, and PROXY_URL environment variables.")
-
-        # Construct proxy URLs with credentials
-        http_proxy_url = f"http://{proxy_username}:{proxy_password}@{proxy_url_base}"
-        https_proxy_url = f"https://{proxy_username}:{proxy_password}@{proxy_url_base}"
-
-        proxy_config = GenericProxyConfig(
-            http_url=http_proxy_url,
-            https_url=https_proxy_url
-        )
-
-        ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
-        transcript = ytt_api.fetch(video_id)
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
         return format_transcript(transcript)
-
     except Exception as e:
-        raise Exception(f"Error fetching transcript with proxy: {str(e)}")
+        raise Exception(f"Error fetching transcript: {str(e)}")
 
 @mcp.tool()
 def fetch_instructions(prompt_name: str) -> str:

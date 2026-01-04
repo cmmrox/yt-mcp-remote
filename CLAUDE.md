@@ -55,17 +55,6 @@ The server requires the following OAuth scopes:
 - `phone`
 - `offline_access`
 
-### Proxy Configuration
-
-The server requires proxy credentials to fetch YouTube transcripts:
-- Uses `youtube-transcript-api` with proxy support via `GenericProxyConfig`
-- Required environment variables:
-  - `PROXY_USERNAME`: Proxy authentication username
-  - `PROXY_PASSWORD`: Proxy authentication password
-  - `PROXY_URL`: Proxy server URL (format: `hostname:port`)
-
-If proxy credentials are not configured, transcript fetching will fail with an error message.
-
 ### MCP Tools
 
 The server exposes two tools via the MCP protocol:
