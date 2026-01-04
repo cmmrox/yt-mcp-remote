@@ -52,22 +52,37 @@ def log_auth0_diagnostics():
 
     if domain:
         logger.info(f"✓ AUTH0_DOMAIN is set: {domain}")
+
+        # Check for regional domain format
+        if '.us.auth0.com' in domain:
+            logger.info(f"  ℹ Regional domain detected: US region")
+        elif '.eu.auth0.com' in domain:
+            logger.info(f"  ℹ Regional domain detected: EU region")
+        elif '.au.auth0.com' in domain:
+            logger.info(f"  ℹ Regional domain detected: AU region")
+        elif '.auth0.com' in domain and not any(x in domain for x in ['.us.', '.eu.', '.au.']):
+            logger.warning(f"  ⚠ Legacy domain format detected. If tenant was created after June 2020, add regional suffix (e.g., .us.auth0.com)")
+
         jwks_url = f"https://{domain}/.well-known/jwks.json"
         logger.info(f"  JWKS URL will be: {jwks_url}")
 
-        # Test JWKS URL accessibility (optional, requires requests)
+        # Test JWKS URL accessibility
         try:
             import requests
             response = requests.get(jwks_url, timeout=5)
             if response.status_code == 200:
                 logger.info(f"  ✓ JWKS endpoint is accessible")
+                keys = response.json().get('keys', [])
+                logger.info(f"  ✓ Found {len(keys)} signing key(s)")
                 logger.debug(f"  JWKS response preview: {str(response.json())[:100]}...")
             else:
-                logger.warning(f"  ⚠ JWKS endpoint returned status {response.status_code}")
+                logger.error(f"  ✗ JWKS endpoint returned status {response.status_code}")
+                logger.error(f"  Suggestion: Check AUTH0_DOMAIN in .env file. Use exact domain from Auth0 Dashboard.")
         except ImportError:
             logger.debug(f"  'requests' library not available, skipping JWKS connectivity test")
         except Exception as e:
-            logger.warning(f"  ⚠ Could not test JWKS endpoint: {e}")
+            logger.error(f"  ✗ Could not test JWKS endpoint: {e}")
+            logger.error(f"  Suggestion: Verify AUTH0_DOMAIN is correct and network connectivity is available")
     else:
         logger.error(f"✗ AUTH0_DOMAIN is NOT set")
 
@@ -129,7 +144,7 @@ mcp = FastMCP(
     auth=AuthSettings(
         issuer_url=AnyHttpUrl(f"https://{auth0_domain}/"),
         resource_server_url=AnyHttpUrl(resource_server_url),
-        required_scopes=["openid", "profile", "email", "address", "phone"],
+        required_scopes=["openid", "profile", "email", "address", "phone", "offline_access"],
     ),
 )
 
