@@ -1,5 +1,8 @@
 import re
 import os
+import sys
+import logging
+from logging.handlers import RotatingFileHandler
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.auth.settings import AuthSettings
@@ -9,17 +12,102 @@ from dotenv import load_dotenv
 
 from utils.auth import create_auth0_verifier
 
+# Configure logging
+log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Console handler (INFO level for cleaner output)
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(log_formatter)
+console_handler.setLevel(logging.INFO)
+
+# File handler with rotation (10MB max, keep 5 backup files)
+file_handler = RotatingFileHandler(
+    'yt-mcp-server.log',
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5
+)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.DEBUG)
+
+# Configure root logger
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.DEBUG),
+    handlers=[console_handler, file_handler]
+)
+
+logger = logging.getLogger('yt_mcp.main')
+
 # Load environment variables from .env file
 load_dotenv()
 
-# Get Auth0 configuration from environment
+def log_auth0_diagnostics():
+    """Log diagnostic information to help debug Auth0 configuration."""
+    logger.info("=" * 80)
+    logger.info("Auth0 Configuration Diagnostics")
+    logger.info("=" * 80)
+
+    domain = os.getenv("AUTH0_DOMAIN")
+    audience = os.getenv("AUTH0_AUDIENCE")
+
+    if domain:
+        logger.info(f"✓ AUTH0_DOMAIN is set: {domain}")
+        jwks_url = f"https://{domain}/.well-known/jwks.json"
+        logger.info(f"  JWKS URL will be: {jwks_url}")
+
+        # Test JWKS URL accessibility (optional, requires requests)
+        try:
+            import requests
+            response = requests.get(jwks_url, timeout=5)
+            if response.status_code == 200:
+                logger.info(f"  ✓ JWKS endpoint is accessible")
+                logger.debug(f"  JWKS response preview: {str(response.json())[:100]}...")
+            else:
+                logger.warning(f"  ⚠ JWKS endpoint returned status {response.status_code}")
+        except ImportError:
+            logger.debug(f"  'requests' library not available, skipping JWKS connectivity test")
+        except Exception as e:
+            logger.warning(f"  ⚠ Could not test JWKS endpoint: {e}")
+    else:
+        logger.error(f"✗ AUTH0_DOMAIN is NOT set")
+
+    if audience:
+        logger.info(f"✓ AUTH0_AUDIENCE is set: {audience}")
+    else:
+        logger.error(f"✗ AUTH0_AUDIENCE is NOT set")
+
+    logger.info("=" * 80)
+
+# Log server startup
+logger.info("=" * 80)
+logger.info("YouTube MCP Remote Server Starting")
+logger.info("=" * 80)
+
+# Log environment configuration (sanitized)
 auth0_domain = os.getenv("AUTH0_DOMAIN")
 resource_server_url = os.getenv("RESOURCE_SERVER_URL")
+auth0_algorithms = os.getenv("AUTH0_ALGORITHMS", "RS256")
+port = int(os.getenv("PORT", "8000"))
 
+logger.info(f"Configuration loaded:")
+logger.info(f"  AUTH0_DOMAIN: {auth0_domain}")
+logger.info(f"  AUTH0_AUDIENCE: {'***SET***' if os.getenv('AUTH0_AUDIENCE') else '***NOT SET***'}")
+logger.info(f"  RESOURCE_SERVER_URL: {resource_server_url}")
+logger.info(f"  AUTH0_ALGORITHMS: {auth0_algorithms}")
+logger.info(f"  PORT: {port}")
+
+# Validate required environment variables
 if not auth0_domain:
+    logger.error("FATAL: AUTH0_DOMAIN environment variable is required but not set")
     raise ValueError("AUTH0_DOMAIN environment variable is required")
 if not resource_server_url:
+    logger.error("FATAL: RESOURCE_SERVER_URL environment variable is required but not set")
     raise ValueError("RESOURCE_SERVER_URL environment variable is required")
+
+logger.info("Environment validation passed")
+
+# Run Auth0 diagnostics
+log_auth0_diagnostics()
 
 # Load server instructions
 with open("prompts/server_instructions.md", "r") as file:
@@ -27,9 +115,8 @@ with open("prompts/server_instructions.md", "r") as file:
 
 # Initialize Auth0 token verifier
 token_verifier = create_auth0_verifier()
-
-# Get port from environment variable, default to 8000
-port = int(os.getenv("PORT", "8000"))
+logger.info(f"Auth0 token verifier initialized successfully")
+logger.info(f"JWKS URL: https://{auth0_domain}/.well-known/jwks.json")
 
 # Create an MCP server with OAuth authentication
 mcp = FastMCP(
@@ -109,4 +196,11 @@ def fetch_instructions(prompt_name: str) -> str:
         return f.read()
 
 if __name__ == "__main__":
+    logger.info("=" * 80)
+    logger.info(f"Starting FastMCP server on {mcp.settings.host}:{mcp.settings.port}")
+    logger.info(f"MCP endpoint: http://{mcp.settings.host}:{mcp.settings.port}{mcp.settings.streamable_http_path}")
+    logger.info(f"Transport: streamable-http")
+    logger.info(f"Authentication: OAuth 2.0 (Auth0)")
+    logger.info(f"Required scopes: {mcp.settings.auth.required_scopes if mcp.settings.auth else 'None'}")
+    logger.info("=" * 80)
     mcp.run(transport='streamable-http')
