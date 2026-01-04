@@ -51,9 +51,6 @@ The server requires the following OAuth scopes:
 - `openid`
 - `profile`
 - `email`
-- `address`
-- `phone`
-- `offline_access`
 
 ### MCP Tools
 
