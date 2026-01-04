@@ -29,11 +29,15 @@ with open("prompts/server_instructions.md", "r") as file:
 # Initialize Auth0 token verifier
 token_verifier = create_auth0_verifier()
 
+# Get port from environment variable, default to 8000
+port = int(os.getenv("PORT", "8000"))
+
 # Create an MCP server with OAuth authentication
 mcp = FastMCP(
     "yt-mcp",
     instructions=server_instructions,
     host="0.0.0.0",
+    port=port,
     # OAuth Configuration
     token_verifier=token_verifier,
     auth=AuthSettings(
