@@ -13,6 +13,9 @@ wheels/
 # Mac
 .DS_Store
 
+# Certificates
+certs/
+
 # llm files
 .llm/
 .claude/
