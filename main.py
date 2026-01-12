@@ -185,7 +185,8 @@ def fetch_video_transcript(url: str) -> str:
         return "\n".join(formatted_entries)
 
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        ytt_api = YouTubeTranscriptApi()
+        transcript = ytt_api.fetch(video_id)
         return format_transcript(transcript)
     except Exception as e:
         raise Exception(f"Error fetching transcript: {str(e)}")
