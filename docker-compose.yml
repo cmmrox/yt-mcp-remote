@@ -1,5 +1,8 @@
 services:
   yt-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: odooerpcg/finance-mcp:latest
     container_name: yt-mcp-server
     env_file:
