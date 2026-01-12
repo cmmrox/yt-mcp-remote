@@ -1,14 +1,6 @@
-version: '3.8'
-
-networks:
-  mcp-network:
-    external: true
-
 services:
   yt-mcp-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: odooerpcg/finance-mcp:latest
     container_name: yt-mcp-server
     env_file:
       - .env
@@ -17,3 +9,7 @@ services:
       - PORT=8000
     networks:
       - mcp-network
+
+networks:
+  mcp-network:
+
